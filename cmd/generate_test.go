@@ -27,6 +27,7 @@ func resetForRun() error {
 	gitRoot = pwd
 	autoPlan = false
 	autoMerge = false
+	// deleteSourceBranchOnMergeMain = false
 	cascadeDependencies = true
 	ignoreParentTerragrunt = true
 	ignoreDependencyBlocks = false
@@ -38,8 +39,11 @@ func resetForRun() error {
 	defaultWorkflow = ""
 	filterPath = ""
 	outputPath = ""
+	// deleteSourceBranchOnMergeProject = false
 	defaultTerraformVersion = ""
+	// defaultPlanRequirements = []string{}
 	defaultApplyRequirements = []string{}
+	// defaultImportRequirements = []string{}
 	projectHclFiles = []string{}
 	createHclProjectChilds = false
 	createHclProjectExternalChilds = true

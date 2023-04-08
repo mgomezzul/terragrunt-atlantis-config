@@ -18,17 +18,32 @@ import (
 
 // ResolvedLocals are the parsed result of local values this module cares about
 type ResolvedLocals struct {
+	// The project branch to use for some project
+	BranchProject string
+
+	// The project branch to use for some project
+	DeleteSourceBranchOnMergeProject *bool
+
 	// The Atlantis workflow to use for some project
 	AtlantisWorkflow string
 
+	// Plan requirements to override the global `--plan-requirements` flag
+	PlanRequirements []string
+
 	// Apply requirements to override the global `--apply-requirements` flag
 	ApplyRequirements []string
+
+	// Import requirements to override the global `--import-requirements` flag
+	ImportRequirements []string
 
 	// Extra dependencies that can be hardcoded in config
 	ExtraAtlantisDependencies []string
 
 	// If set, a single module will have autoplan turned to this setting
 	AutoPlan *bool
+
+	// If set, a repository lock is applied in this project when plan.
+	RepoLocking *bool
 
 	// If set to true, the module will not be included in the output
 	Skip *bool
@@ -69,6 +84,14 @@ func parseHcl(parser *hclparse.Parser, hcl string, filename string) (file *hcl.F
 
 // Merges in values from a child into a parent set of `local` values
 func mergeResolvedLocals(parent ResolvedLocals, child ResolvedLocals) ResolvedLocals {
+	if child.BranchProject != "" {
+		parent.BranchProject = child.BranchProject
+	}
+
+	if child.DeleteSourceBranchOnMergeProject != nil {
+		parent.DeleteSourceBranchOnMergeProject = child.DeleteSourceBranchOnMergeProject
+	}
+
 	if child.AtlantisWorkflow != "" {
 		parent.AtlantisWorkflow = child.AtlantisWorkflow
 	}
@@ -81,6 +104,10 @@ func mergeResolvedLocals(parent ResolvedLocals, child ResolvedLocals) ResolvedLo
 		parent.AutoPlan = child.AutoPlan
 	}
 
+	if child.RepoLocking != nil {
+		parent.RepoLocking = child.RepoLocking
+	}
+
 	if child.Skip != nil {
 		parent.Skip = child.Skip
 	}
@@ -89,8 +116,16 @@ func mergeResolvedLocals(parent ResolvedLocals, child ResolvedLocals) ResolvedLo
 		parent.markedProject = child.markedProject
 	}
 
+	if child.PlanRequirements != nil || len(child.PlanRequirements) > 0 {
+		parent.PlanRequirements = child.PlanRequirements
+	}
+
 	if child.ApplyRequirements != nil || len(child.ApplyRequirements) > 0 {
 		parent.ApplyRequirements = child.ApplyRequirements
+	}
+
+	if child.ImportRequirements != nil || len(child.ImportRequirements) > 0 {
+		parent.ImportRequirements = child.ImportRequirements
 	}
 
 	parent.ExtraAtlantisDependencies = append(parent.ExtraAtlantisDependencies, child.ExtraAtlantisDependencies...)
@@ -140,6 +175,17 @@ func resolveLocals(localsAsCty cty.Value) ResolvedLocals {
 	}
 	rawLocals := localsAsCty.AsValueMap()
 
+	branchProjectValue, ok := rawLocals["atlantis_branch"]
+	if ok {
+		resolved.BranchProject = branchProjectValue.AsString()
+	}
+
+	deleteSourceBranchOnMergeProjectValue, ok := rawLocals["atlantis_delete_source_branch_on_merge"]
+	if ok {
+		hasValue := deleteSourceBranchOnMergeProjectValue.True()
+		resolved.DeleteSourceBranchOnMergeProject = &hasValue
+	}
+
 	workflowValue, ok := rawLocals["atlantis_workflow"]
 	if ok {
 		resolved.AtlantisWorkflow = workflowValue.AsString()
@@ -156,10 +202,26 @@ func resolveLocals(localsAsCty cty.Value) ResolvedLocals {
 		resolved.AutoPlan = &hasValue
 	}
 
+	repoLockingValue, ok := rawLocals["atlantis_repo_locking"]
+	if ok {
+		hasValue := repoLockingValue.True()
+		resolved.RepoLocking = &hasValue
+	}
+
 	skipValue, ok := rawLocals["atlantis_skip"]
 	if ok {
 		hasValue := skipValue.True()
 		resolved.Skip = &hasValue
+	}
+
+	planReqs, ok := rawLocals["atlantis_plan_requirements"]
+	if ok {
+		resolved.PlanRequirements = []string{}
+		it := planReqs.ElementIterator()
+		for it.Next() {
+			_, val := it.Element()
+			resolved.PlanRequirements = append(resolved.PlanRequirements, val.AsString())
+		}
 	}
 
 	applyReqs, ok := rawLocals["atlantis_apply_requirements"]
@@ -169,6 +231,16 @@ func resolveLocals(localsAsCty cty.Value) ResolvedLocals {
 		for it.Next() {
 			_, val := it.Element()
 			resolved.ApplyRequirements = append(resolved.ApplyRequirements, val.AsString())
+		}
+	}
+
+	importReqs, ok := rawLocals["atlantis_immport_requirements"]
+	if ok {
+		resolved.ImportRequirements = []string{}
+		it := importReqs.ElementIterator()
+		for it.Next() {
+			_, val := it.Element()
+			resolved.ImportRequirements = append(resolved.ImportRequirements, val.AsString())
 		}
 	}
 

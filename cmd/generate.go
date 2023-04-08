@@ -376,9 +376,27 @@ func createProject(sourcePath string) (*AtlantisProject, error) {
 		relativeSourceDir = "."
 	}
 
+	branch := branchProject
+	if locals.BranchProject != "" {
+		branch = locals.BranchProject
+	}
+
+	deleteSourceBranchOnMergeProject := defaultDeleteSourceBranchOnMergeProject
+	if locals.DeleteSourceBranchOnMergeProject != nil {
+		deleteSourceBranchOnMergeProject = *locals.DeleteSourceBranchOnMergeProject
+	}
+
 	workflow := defaultWorkflow
 	if locals.AtlantisWorkflow != "" {
 		workflow = locals.AtlantisWorkflow
+	}
+
+	planRequirements := &defaultPlanRequirements
+	if len(defaultPlanRequirements) == 0 {
+		planRequirements = nil
+	}
+	if locals.PlanRequirements != nil {
+		planRequirements = &locals.PlanRequirements
 	}
 
 	applyRequirements := &defaultApplyRequirements
@@ -389,9 +407,22 @@ func createProject(sourcePath string) (*AtlantisProject, error) {
 		applyRequirements = &locals.ApplyRequirements
 	}
 
+	importRequirements := &defaultImportRequirements
+	if len(defaultImportRequirements) == 0 {
+		importRequirements = nil
+	}
+	if locals.ImportRequirements != nil {
+		importRequirements = &locals.ImportRequirements
+	}
+
 	resolvedAutoPlan := autoPlan
 	if locals.AutoPlan != nil {
 		resolvedAutoPlan = *locals.AutoPlan
+	}
+
+	repoLocking := defaultRepoLocking
+	if locals.RepoLocking != nil {
+		repoLocking = *locals.RepoLocking
 	}
 
 	terraformVersion := defaultTerraformVersion
@@ -400,10 +431,15 @@ func createProject(sourcePath string) (*AtlantisProject, error) {
 	}
 
 	project := &AtlantisProject{
-		Dir:               filepath.ToSlash(relativeSourceDir),
-		Workflow:          workflow,
-		TerraformVersion:  terraformVersion,
-		ApplyRequirements: applyRequirements,
+		Branch:                           branch,
+		Dir:                              filepath.ToSlash(relativeSourceDir),
+		DeleteSourceBranchOnMergeProject: deleteSourceBranchOnMergeProject,
+		RepoLocking:                      repoLocking,
+		Workflow:                         workflow,
+		TerraformVersion:                 terraformVersion,
+		PlanRequirements:                 planRequirements,
+		ApplyRequirements:                applyRequirements,
+		ImportRequirements:               importRequirements,
 		Autoplan: AutoplanConfig{
 			Enabled:      resolvedAutoPlan,
 			WhenModified: uniqueStrings(relativeDependencies),
@@ -433,8 +469,13 @@ func createProject(sourcePath string) (*AtlantisProject, error) {
 func createHclProject(sourcePaths []string, workingDir string, projectHcl string) (*AtlantisProject, error) {
 	var projectHclDependencies []string
 	var childDependencies []string
+	branch := branchProject
+	defaultDeleteSourceBranchOnMergeProject := defaultDeleteSourceBranchOnMergeProject
+	repoLocking := defaultRepoLocking
 	workflow := defaultWorkflow
+	planRequirements := &defaultPlanRequirements
 	applyRequirements := &defaultApplyRequirements
+	importRequirements := &defaultImportRequirements
 	resolvedAutoPlan := autoPlan
 	terraformVersion := defaultTerraformVersion
 
@@ -475,8 +516,24 @@ func createHclProject(sourcePaths []string, workingDir string, projectHcl string
 		}
 	}
 
+	if locals.BranchProject != "" {
+		branch = locals.BranchProject
+	}
+
+	deleteSourceBranchOnMergeProject := defaultDeleteSourceBranchOnMergeProject
+	if locals.DeleteSourceBranchOnMergeProject != nil {
+		deleteSourceBranchOnMergeProject = *locals.DeleteSourceBranchOnMergeProject
+	}
+
 	if locals.AtlantisWorkflow != "" {
 		workflow = locals.AtlantisWorkflow
+	}
+
+	if len(defaultPlanRequirements) == 0 {
+		planRequirements = nil
+	}
+	if locals.PlanRequirements != nil {
+		planRequirements = &locals.PlanRequirements
 	}
 
 	if len(defaultApplyRequirements) == 0 {
@@ -486,8 +543,19 @@ func createHclProject(sourcePaths []string, workingDir string, projectHcl string
 		applyRequirements = &locals.ApplyRequirements
 	}
 
+	if len(defaultImportRequirements) == 0 {
+		importRequirements = nil
+	}
+	if locals.ImportRequirements != nil {
+		importRequirements = &locals.ImportRequirements
+	}
+
 	if locals.AutoPlan != nil {
 		resolvedAutoPlan = *locals.AutoPlan
+	}
+
+	if locals.RepoLocking != nil {
+		repoLocking = *locals.RepoLocking
 	}
 
 	if locals.TerraformVersion != "" {
@@ -545,10 +613,15 @@ func createHclProject(sourcePaths []string, workingDir string, projectHcl string
 	}
 
 	project := &AtlantisProject{
-		Dir:               filepath.ToSlash(dir),
-		Workflow:          workflow,
-		TerraformVersion:  terraformVersion,
-		ApplyRequirements: applyRequirements,
+		Branch:                           branch,
+		Dir:                              filepath.ToSlash(dir),
+		DeleteSourceBranchOnMergeProject: deleteSourceBranchOnMergeProject,
+		RepoLocking:                      repoLocking,
+		Workflow:                         workflow,
+		TerraformVersion:                 terraformVersion,
+		PlanRequirements:                 planRequirements,
+		ApplyRequirements:                applyRequirements,
+		ImportRequirements:               importRequirements,
 		Autoplan: AutoplanConfig{
 			Enabled:      resolvedAutoPlan,
 			WhenModified: uniqueStrings(append(childDependencies, projectHclDependencies...)),
@@ -686,10 +759,11 @@ func main(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	config := AtlantisConfig{
-		Version:       3,
-		AutoMerge:     autoMerge,
-		ParallelPlan:  parallel,
-		ParallelApply: parallel,
+		Version:                         3,
+		AutoMerge:                       autoMerge,
+		DeleteSourceBranchOnMergeGlobal: defaultDeleteSourceBranchOnMergeGlobal,
+		ParallelPlan:                    parallel,
+		ParallelApply:                   parallel,
 	}
 	if oldConfig != nil && preserveWorkflows {
 		config.Workflows = oldConfig.Workflows
@@ -895,6 +969,7 @@ func main(cmd *cobra.Command, args []string) error {
 var gitRoot string
 var autoPlan bool
 var autoMerge bool
+var defaultDeleteSourceBranchOnMergeGlobal bool
 var ignoreParentTerragrunt bool
 var createParentProject bool
 var ignoreDependencyBlocks bool
@@ -908,13 +983,18 @@ var outputPath string
 var preserveWorkflows bool
 var preserveProjects bool
 var cascadeDependencies bool
+var defaultPlanRequirements []string
 var defaultApplyRequirements []string
+var defaultImportRequirements []string
 var numExecutors int64
 var projectHclFiles []string
 var createHclProjectChilds bool
 var createHclProjectExternalChilds bool
 var useProjectMarkers bool
 var executionOrderGroups bool
+var defaultDeleteSourceBranchOnMergeProject bool
+var defaultRepoLocking bool
+var branchProject string
 
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
@@ -934,6 +1014,7 @@ func init() {
 
 	generateCmd.PersistentFlags().BoolVar(&autoPlan, "autoplan", false, "Enable auto plan. Default is disabled")
 	generateCmd.PersistentFlags().BoolVar(&autoMerge, "automerge", false, "Enable auto merge. Default is disabled")
+	generateCmd.PersistentFlags().BoolVar(&defaultDeleteSourceBranchOnMergeGlobal, "delete-source-branch-on-merge-global", false, "Enable automatically deletes the source branch on merge based on global configuration. Default is disabled")
 	generateCmd.PersistentFlags().BoolVar(&ignoreParentTerragrunt, "ignore-parent-terragrunt", true, "Ignore parent terragrunt configs (those which don't reference a terraform module). Default is enabled")
 	generateCmd.PersistentFlags().BoolVar(&createParentProject, "create-parent-project", false, "Create a project for the parent terragrunt configs (those which don't reference a terraform module). Default is disabled")
 	generateCmd.PersistentFlags().BoolVar(&ignoreDependencyBlocks, "ignore-dependency-blocks", false, "When true, dependencies found in `dependency` blocks will be ignored")
@@ -944,7 +1025,9 @@ func init() {
 	generateCmd.PersistentFlags().BoolVar(&preserveProjects, "preserve-projects", false, "Preserves projects from old output files to enable incremental builds. Default is false")
 	generateCmd.PersistentFlags().BoolVar(&cascadeDependencies, "cascade-dependencies", true, "When true, dependencies will cascade, meaning that a module will be declared to depend not only on its dependencies, but all dependencies of its dependencies all the way down. Default is true")
 	generateCmd.PersistentFlags().StringVar(&defaultWorkflow, "workflow", "", "Name of the workflow to be customized in the atlantis server. Default is to not set")
-	generateCmd.PersistentFlags().StringSliceVar(&defaultApplyRequirements, "apply-requirements", []string{}, "Requirements that must be satisfied before `atlantis apply` can be run. Currently the only supported requirements are `approved` and `mergeable`. Can be overridden by locals")
+	generateCmd.PersistentFlags().StringSliceVar(&defaultPlanRequirements, "plan-requirements", []string{}, "Requirements that must be satisfied before `atlantis plan` can be run. Currently the only supported requirements are `approved`, `mergeable` and `undiverged`. Can be overridden by locals")
+	generateCmd.PersistentFlags().StringSliceVar(&defaultApplyRequirements, "apply-requirements", []string{}, "Requirements that must be satisfied before `atlantis apply` can be run. Currently the only supported requirements are`approved`, `mergeable` and `undiverged`. Can be overridden by locals")
+	generateCmd.PersistentFlags().StringSliceVar(&defaultImportRequirements, "import-requirements", []string{}, "Requirements that must be satisfied before `atlantis import` can be run. Currently the only supported requirements are `approved`, `mergeable` and `undiverged`. Can be overridden by locals")
 	generateCmd.PersistentFlags().StringVar(&outputPath, "output", "", "Path of the file where configuration will be generated. Default is not to write to file")
 	generateCmd.PersistentFlags().StringVar(&filterPath, "filter", "", "Path or glob expression to the directory you want scope down the config for. Default is all files in root")
 	generateCmd.PersistentFlags().StringVar(&gitRoot, "root", pwd, "Path to the root directory of the git repo you want to build config for. Default is current dir")
@@ -955,6 +1038,9 @@ func init() {
 	generateCmd.PersistentFlags().BoolVar(&createHclProjectExternalChilds, "create-hcl-project-external-childs", true, "Creates Atlantis projects for terragrunt child modules outside the directories containing the HCL files defined in --project-hcl-files")
 	generateCmd.PersistentFlags().BoolVar(&useProjectMarkers, "use-project-markers", false, "Creates Atlantis projects only for project hcl files with locals: atlantis_project = true")
 	generateCmd.PersistentFlags().BoolVar(&executionOrderGroups, "execution-order-groups", false, "Computes execution_order_groups for projects")
+	generateCmd.PersistentFlags().BoolVar(&defaultDeleteSourceBranchOnMergeProject, "delete-source-branch-on-merge-project", false, "Enable automatically deletes the source branch on merge based on project configuration. Default is disabled")
+	generateCmd.PersistentFlags().BoolVar(&defaultRepoLocking, "repo-locking", true, "Control repository lock in this project when plan. Default is enabled")
+	generateCmd.PersistentFlags().StringVar(&branchProject, "branch", "", "Regex matching projects by the base branch of pull request. Only projects that match the PR's branch will be considered. Default, all branches are matched.")
 }
 
 // Runs a set of arguments, returning the output

@@ -16,6 +16,9 @@ type AtlantisConfig struct {
 	// If Atlantis should merge after finishing `atlantis apply`
 	AutoMerge bool `json:"automerge"`
 
+	// If Atlantis should allow automatically deletes the source branch on merge
+	DeleteSourceBranchOnMergeGlobal bool `json:"delete_source_branch_on_merge"`
+
 	// If Atlantis should allow plans to occur in parallel
 	ParallelPlan bool `json:"parallel_plan"`
 
@@ -28,33 +31,55 @@ type AtlantisConfig struct {
 	// Workflows, which are not managed by this library other than
 	// the fact that this library preserves any existing workflows
 	Workflows interface{} `json:"workflows,omitempty"`
+
+	// Allowed regexp prefixed, Lists the allowed regexp prefixes to use when
+	// the --enable-regexp-cmd flag is used. ?omitempty?
+
 }
 
 // Represents an Atlantis Project directory
 type AtlantisProject struct {
+	// Define project name
+	Name string `json:"name,omitempty"`
+
+	// Represents a regex matching projects by the base branch of pull request
+	// (the branch the  pull request is getting merged into).
+	// Only projects that match the PR's branch will be considered.
+	// By default, all branches are matched.
+	Branch string `json:"branch,omitempty"`
+
 	// The directory with the terragrunt.hcl file
 	Dir string `json:"dir"`
-
-	// Define workflow name
-	Workflow string `json:"workflow,omitempty"`
 
 	// Define workspace name
 	Workspace string `json:"workspace,omitempty"`
 
-	// Define project name
-	Name string `json:"name,omitempty"`
+	// Atlantis use ExecutionOrderGroup for sort projects before applying/planning
+	ExecutionOrderGroup int `json:"execution_order_group,omitempty"`
 
-	// Autoplan settings for which plans affect other plans
+	// Atlantis use ExecutionOrderGroup for sort projects before applying/planning
+	DeleteSourceBranchOnMergeProject bool `json:"delete_source_branch_on_merge,omitempty"`
+
+	// Atlantis use RepoLocking for get a repository lock in this project when plan.
+	RepoLocking bool `json:"repo_locking,omitempty"`
+
+	// Autoplan settings for which plans affect other plans ?omitempty?
 	Autoplan AutoplanConfig `json:"autoplan"`
 
 	// The terraform version to use for this project
 	TerraformVersion string `json:"terraform_version,omitempty"`
 
+	// We only want to output `plan_requirements` if explicitly stated in a local value
+	PlanRequirements *[]string `json:"plan_requirements,omitempty"`
+
 	// We only want to output `apply_requirements` if explicitly stated in a local value
 	ApplyRequirements *[]string `json:"apply_requirements,omitempty"`
 
-	// Atlantis use ExecutionOrderGroup for sort projects before applying/planning
-	ExecutionOrderGroup int `json:"execution_order_group,omitempty"`
+	// We only want to output `import_requirements` if explicitly stated in a local value
+	ImportRequirements *[]string `json:"import_requirements,omitempty"`
+
+	// Define workflow name
+	Workflow string `json:"workflow,omitempty"`
 }
 
 // Autoplan settings for which plans affect other plans
