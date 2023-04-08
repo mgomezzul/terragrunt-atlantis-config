@@ -21,3 +21,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/ini.v1 v1.57.0 // indirect
 )
+
+replace github.com/tencentcloud/tencentcloud-sdk-go => github.com/tencentcloud/tencentcloud-sdk-go v1.0.633
+
+replace github.com/hashicorp/hcl => github.com/hashicorp/hcl v1.0.1-0.20210329193548-cf4c4bf2466d
